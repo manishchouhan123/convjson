@@ -86,6 +86,8 @@ export default function MaterializeJsonWorkbench() {
   const [collapsed, setCollapsed] = useState({});
   const [filter, setFilter] = useState("");
   const [json, setJson] = useState(null);
+  const [showCopyPopup, setShowCopyPopup] = useState(false);
+  const [mode, setMode] = useState(""); // "parse" | "beautify"
 
   const highlight = filter.trim().toLowerCase();
 
@@ -126,8 +128,8 @@ export default function MaterializeJsonWorkbench() {
       const prettyStr = pretty(source);
       setPrettyText(prettyStr);
       setView("pretty");
+      setMode("beautify");   // ✅ mark active
       setError("");
-      setInfo("Beautified successfully.");
     } catch (e) {
       setError(`Beautify failed: ${e.message}`);
     }
@@ -138,12 +140,13 @@ export default function MaterializeJsonWorkbench() {
       const obj = JSON.parse(raw);
       setJson(obj);
       setView("tree");
+      setMode("parse");      // ✅ mark active
       setError("");
-      setInfo("Parsed JSON successfully.");
     } catch (e) {
       setError(`Parse error: ${e.message}`);
     }
   }
+
 
   function handleUpload(file) {
     if (!file) return;
@@ -171,11 +174,12 @@ export default function MaterializeJsonWorkbench() {
   }
 
   function handleCopy() {
-    const text = getExportText();
-    copyText(text).then(ok =>
-      setInfo(ok ? "Copied to clipboard." : "Copy failed.")
-    );
-  }
+      const text = getExportText();
+      copyText(text).then(ok => {
+        setShowCopyPopup(true);
+        setTimeout(() => setShowCopyPopup(false), 1500); // hide after 1.5s
+      });
+    }
 
   function getExportText() {
     if (!json) return "";
@@ -185,7 +189,8 @@ export default function MaterializeJsonWorkbench() {
       case "xml":
         return jsonToXml(filteredJson ?? json);
       case "properties":
-        return jsonToProperties(filteredJson ?? json);
+        // 🔥 FIX: join into a newline string
+        return (jsonToProperties(filteredJson ?? json) || []).join("\n");
       case "table":
         return jsonToTableHTML(filteredJson ?? json);
       case "pretty":
@@ -194,6 +199,7 @@ export default function MaterializeJsonWorkbench() {
         return JSON.stringify(filteredJson ?? json, null, 2);
     }
   }
+
 
   function handleFormChange(path, value) {
     if (!json) return;
@@ -258,8 +264,20 @@ export default function MaterializeJsonWorkbench() {
           <div className="mw-card-header">
             <div className="mw-card-title">Input</div>
             <div className="mw-toolbar">
-              <button className="mw-btn" onClick={handleParse}>Parse</button>
-              <button className="mw-btn primary" onClick={handleBeautify}>Beautify</button>
+              <button
+                className={`mw-btn ${mode === "parse" ? "primary" : ""}`}
+                onClick={handleParse}
+              >
+                Parse
+              </button>
+
+              <button
+                className={`mw-btn ${mode === "beautify" ? "primary" : ""}`}
+                onClick={handleBeautify}
+              >
+                Beautify
+              </button>
+
             </div>
           </div>
           <div className="mw-card-body">
@@ -276,7 +294,7 @@ export default function MaterializeJsonWorkbench() {
                 style={{ flexGrow: 1, minHeight: '300px' }}
               />
             {error && <div className="mw-error" style={{marginTop:12}}>{error}</div>}
-            {info && !error && <div className="mw-success" style={{marginTop:12}}>{info}</div>}
+
           </div>
         </section>
 
@@ -311,18 +329,51 @@ export default function MaterializeJsonWorkbench() {
               <button className={`mw-btn ${view==='properties'?'primary':''}`} onClick={()=>setView('properties')}>Properties</button>
               <button className={`mw-btn ${view==='table'?'primary':''}`} onClick={()=>setView('table')}>Table</button>
             </div>
-            <div className="mw-toolbar">
-              <input className="mw-input" placeholder="Filter: search key or value" value={filter} onChange={e=>setFilter(e.target.value)} style={{ minWidth: 200 }} />
+             <div className="mw-toolbar" style={{ position: "relative" }}>
+                <input
+                  className="mw-input"
+                  placeholder="Filter: search key or value"
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                  style={{ minWidth: 200 }}
+                />
 
-              {view !== "table" && (
-                <button className="mw-btn" onClick={handleCopy}>Copy</button>
-              )}
+                {view !== "table" && (
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <button className="mw-btn" onClick={handleCopy}>Copy</button>
+                    {showCopyPopup && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "105%",
+                          transform: "translateY(-50%)",
+                          background: "#26a69a",
+                          color: "white",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.8rem",
+                          whiteSpace: "nowrap",
+                          boxShadow: "0 2px 6px rgba(0,0,0,.3)"
+                        }}
+                      >
+                        Copied!
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {view === "table" && (
-                <button className="mw-btn" onClick={ () => downloadHTML("table-view.html", jsonToTableHTML(filteredJson ?? json)) }>Download Table</button>
-              )}
-
-            </div>
+                {view === "table" && (
+                  <button
+                    className="mw-btn"
+                    onClick={() =>
+                      downloadHTML("table-view.html", jsonToTableHTML(filteredJson ?? json))
+                    }
+                  >
+                    Download Table
+                  </button>
+                )}
+              </div>
           </div>
           <div className="mw-card-body">
             {showPretty && (

@@ -73,70 +73,58 @@ const styles = `
   @media (max-width: 980px) { .mw-body { grid-template-columns: 1fr; height: auto; min-height: 88vh; } .mw-header { height: 12vh } }
 `;
 
-
-
-// ---------- Helpers ----------
-/*
-function downloadText(filename, text) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-*/
-
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-
-// ---------- Components ----------
-
 export default function MaterializeJsonWorkbench() {
-  const [raw, setRaw] = useState("");
+  const [raw, setRaw] = useState("");          // user input
+  const [prettyText, setPrettyText] = useState(""); // beautified output
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [view, setView] = useState("tree"); // 'pretty' | 'tree' | 'form'
+  const [view, setView] = useState("tree");
   const [collapsed, setCollapsed] = useState({});
   const [filter, setFilter] = useState("");
   const [json, setJson] = useState(null);
 
   const highlight = filter.trim().toLowerCase();
 
-useEffect(() => {
-  if (!raw.trim()) {
-    setJson(null);
-    setError("");
-    return;
-  }
+  useEffect(() => {
+    if (!raw.trim()) {
+      setJson(null);
+      setError("");
+      return;
+    }
 
-  try {
-    const obj = JSON.parse(raw);
-    setJson(obj);       // store parsed JSON
-    setError("");       // clear error if valid
-  } catch (e) {
-    setJson(null);      // don't store invalid JSON
-    setError(`Invalid JSON: ${e.message}`); // show live error
-  }
-}, [raw]);
-
+    try {
+      const obj = JSON.parse(raw);
+      setJson(obj);
+      setError("");
+    } catch (e) {
+      setJson(null);
+      setError(`Invalid JSON: ${e.message}`);
+    }
+  }, [raw]);
 
   const filteredJson = useMemo(() => {
     try {
       if (!json) return null;
       if (!highlight) return json;
       return filterJson(json, highlight);
-    } catch (e) {
+    } catch {
       return json;
     }
   }, [json, highlight]);
 
   function handleBeautify() {
     try {
-      const prettyText = pretty(raw || (json ? JSON.stringify(json) : "{}"));
-      setRaw(prettyText);
-      setJson(JSON.parse(prettyText));
+      const source = raw.trim() || (json ? JSON.stringify(json) : "");
+      if (!source) {
+        setError("Nothing to beautify.");
+        return;
+      }
+      const prettyStr = pretty(source);
+      setPrettyText(prettyStr);
       setView("pretty");
       setError("");
       setInfo("Beautified successfully.");
@@ -159,49 +147,70 @@ useEffect(() => {
 
   function handleUpload(file) {
     if (!file) return;
+    // extension validation: only accept .json
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setError("Invalid file type. Only .json files are allowed.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
-      setRaw(String(reader.result || ""));
-      try { setJson(JSON.parse(String(reader.result || ""))); setError(""); setInfo(`Loaded ${file.name}`); }
-      catch (e) { setError(`File loaded but not valid JSON: ${e.message}`); setJson(null); }
+      try {
+        const text = String(reader.result || "");
+        const obj = JSON.parse(text);
+        setRaw(text);
+        setJson(obj);
+        setError("");
+        setInfo(`Loaded ${file.name}`);
+      } catch (e) {
+        setError(`File loaded but not valid JSON: ${e.message}`);
+        setJson(null);
+      }
     };
     reader.onerror = () => setError("Could not read the file.");
     reader.readAsText(file);
   }
 
   function handleCopy() {
-      const text = getExportText();
-      copyText(text).then(ok => setInfo(ok ? "Copied to clipboard." : "Copy failed."));
-    }
+    const text = getExportText();
+    copyText(text).then(ok =>
+      setInfo(ok ? "Copied to clipboard." : "Copy failed.")
+    );
+  }
 
-      function getExportText() {
-        if (!json) return "";
-        switch(view) {
-          case "yaml": return jsonToYaml(filteredJson ?? json);
-          case "xml": return jsonToXml(filteredJson ?? json);
-          case "properties": return jsonToProperties(filteredJson ?? json);
-          case "table": return jsonToTableHTML(filteredJson ?? json); // returns HTML table
-          case "pretty": return raw || "";
-          default: return JSON.stringify(filteredJson ?? json, null, 2);
-        }
-      }
+  function getExportText() {
+    if (!json) return "";
+    switch (view) {
+      case "yaml":
+        return jsonToYaml(filteredJson ?? json);
+      case "xml":
+        return jsonToXml(filteredJson ?? json);
+      case "properties":
+        return jsonToProperties(filteredJson ?? json);
+      case "table":
+        return jsonToTableHTML(filteredJson ?? json);
+      case "pretty":
+        return prettyText || (json ? JSON.stringify(filteredJson ?? json, null, 2) : "");
+      default:
+        return JSON.stringify(filteredJson ?? json, null, 2);
+    }
+  }
 
   function handleFormChange(path, value) {
     if (!json) return;
     const clone = structuredClone(json);
     let ref = clone;
-    for (let i=0;i<path.length-1;i++) ref = ref[path[i]];
-    const leaf = path[path.length-1];
+    for (let i = 0; i < path.length - 1; i++) ref = ref[path[i]];
+    const leaf = path[path.length - 1];
     // best-effort type inference
     let coerced = value;
-    if (value === 'true') coerced = true; else if (value === 'false') coerced = false; else if (value === 'null') coerced = null; else if (!isNaN(Number(value)) && value.trim() !== '') coerced = Number(value);
+    if (value === 'true') coerced = true;
+    else if (value === 'false') coerced = false;
+    else if (value === 'null') coerced = null;
+    else if (!isNaN(Number(value)) && value.trim() !== '') coerced = Number(value);
     ref[leaf] = coerced;
     setJson(clone);
     setRaw(JSON.stringify(clone, null, 2));
   }
-
-
-
 
   const showTree = view === 'tree' && filteredJson;
   const showPretty = view === 'pretty';
@@ -275,14 +284,32 @@ useEffect(() => {
         <section className="mw-card">
           <div className="mw-card-header">
             <div className="mw-toolbar">
-              <button className={`mw-btn ${view==='pretty'?'primary':''}`} onClick={()=>setView('pretty')}>JSON</button>
+              <button
+                className={`mw-btn ${view === "pretty" ? "primary" : ""}`}
+                onClick={() => {
+                  try {
+                    const src = json ?? (raw ? JSON.parse(raw) : null);
+                    if (!src) {
+                      setError("Nothing to show.");
+                      setPrettyText("");
+                    } else {
+                      setPrettyText(pretty(src));
+                      setError("");
+                    }
+                    setView("pretty");
+                  } catch (e) {
+                    setError(`Cannot format JSON: ${e.message}`);
+                  }
+                }}
+              >
+                JSON
+              </button>
               <button className={`mw-btn ${view==='tree'?'primary':''}`} onClick={()=>setView('tree')}>Tree</button>
               <button className={`mw-btn ${view==='form'?'primary':''}`} onClick={()=>setView('form')}>Form</button>
               <button className={`mw-btn ${view==='yaml'?'primary':''}`} onClick={()=>setView('yaml')}>YAML</button>
               <button className={`mw-btn ${view==='xml'?'primary':''}`} onClick={()=>setView('xml')}>XML</button>
               <button className={`mw-btn ${view==='properties'?'primary':''}`} onClick={()=>setView('properties')}>Properties</button>
               <button className={`mw-btn ${view==='table'?'primary':''}`} onClick={()=>setView('table')}>Table</button>
-
             </div>
             <div className="mw-toolbar">
               <input className="mw-input" placeholder="Filter: search key or value" value={filter} onChange={e=>setFilter(e.target.value)} style={{ minWidth: 200 }} />
@@ -299,7 +326,7 @@ useEffect(() => {
           </div>
           <div className="mw-card-body">
             {showPretty && (
-              <pre className="tree" style={{ whiteSpace: 'pre-wrap' }}>{raw}</pre>
+              <pre className="tree" style={{ whiteSpace: 'pre-wrap' }}>{prettyText || (json ? JSON.stringify(filteredJson ?? json, null, 2) : raw)}</pre>
             )}
 
             {view==='pretty' && !raw && (
@@ -349,4 +376,3 @@ useEffect(() => {
     </div>
   );
 }
-

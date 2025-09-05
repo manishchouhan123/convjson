@@ -71,6 +71,16 @@ const styles = `
 
   /* Responsive */
   @media (max-width: 980px) { .mw-body { grid-template-columns: 1fr; height: auto; min-height: 88vh; } .mw-header { height: 12vh } }
+  @media (max-width: 440px) {
+    .mw-input{
+      min-width : 100px !important;
+    }
+    .mw-toolbar{
+      width:50%;
+    }
+    .mw-btn{
+        font-size: x-small;}
+    }
 `;
 
 async function copyText(text) {

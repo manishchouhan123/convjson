@@ -52,7 +52,7 @@ const styles = `
   /* Header gradient */
   .grad { background: linear-gradient(120deg, #1976d2, #26c6da 35%, #ffb74d 75%); }
 
-  @media (max-width: 980px) { .mw-body { grid-template-columns: 1fr; height: auto; min-height: 88vh; } .mw-header { height: 12vh } }
+  /*@media (max-width: 980px) { .mw-body { grid-template-columns: 1fr; height: auto; min-height: 88vh; } .mw-header { height: 12vh } }*/
 `;
 
 export default styles;

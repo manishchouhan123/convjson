@@ -21,6 +21,7 @@ export default defineConfig({
     }),
   ],
   build: {
-    minify: "terser",
+    sourcemap: false, // 🚫 don’t expose source code
+    minify: "terser"
   },
 });

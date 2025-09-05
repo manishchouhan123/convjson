@@ -28,7 +28,7 @@ const styles = `
   .mw-btn.primary { background: var(--accent); color: #0a0f21; border-color: transparent; }
   .mw-btn.warn { background: var(--accent-2); color: #1a1208; border-color: transparent; }
   .mw-btn.ghost { background: transparent; }
-  .mw-input, .mw-textarea { width: 100%; background: rgba(255,255,255,.06); color: var(--text); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 10px 12px; outline: none; }
+  .mw-input, .mw-textarea { width: 100%; background: rgba(255,255,255,.06); color: var(--text); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 2px 2px; outline: none; }
   .mw-textarea { min-height: 220px; resize: vertical; }
   .mw-textarea.invalid { border-color: var(--err); background: rgba(239,83,80,.1); }
   .mw-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:9999px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); font-size:.85rem }

@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-/*import yaml from "js-yaml";
-import { js2xml } from "xml-js";*/
-
+import { MdError } from "react-icons/md";
 import {filterJson,pretty,jsonToYaml,jsonToXml,jsonToProperties,jsonToTableHTML, downloadHTML} from "./utils/jsonHelpers";
 
 import JsonTable from "./components/JsonTable";
@@ -49,7 +47,7 @@ const styles = `
     background: rgba(239,83,80,.1);
   }
   .mw-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:9999px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); font-size:.85rem }
-  .mw-error { background: rgba(239,83,80,.15); border: 1px solid rgba(239,83,80,.55); color: #ffc9c9; padding: 10px 12px; border-radius: 12px; }
+  .mw-error {color: #ef5350; word-break: break-all; }
   .mw-success { background: rgba(38,166,154,.15); border: 1px solid rgba(38,166,154,.55); color: #b9f6ca; padding: 10px 12px; border-radius: 12px; }
 
   /* Tree view */
@@ -228,9 +226,9 @@ export default function MaterializeJsonWorkbench() {
     setRaw(JSON.stringify(clone, null, 2));
   }
 
-  const showTree = view === 'tree' && filteredJson;
+  const showTree = view === 'tree';
   const showPretty = view === 'pretty';
-  const showForm = view === 'form' && filteredJson;
+  const showForm = view === 'form';
 
   return (
     <div className="mw-root">
@@ -386,16 +384,24 @@ export default function MaterializeJsonWorkbench() {
               </div>
           </div>
           <div className="mw-card-body">
+            {json && filteredJson === undefined && (
+             <span className="mw-error">
+                 <span style={{ marginRight: "6px", color: "var(--err)", display: "inline-flex", alignItems: "center" }}>
+                     <MdError size={18} />
+                 </span>
+                 No matches found for "{filter}"
+             </span>
+            )}
             {showPretty && (
               <pre className="tree" style={{ whiteSpace: 'pre-wrap' }}>{prettyText || (json ? JSON.stringify(filteredJson ?? json, null, 2) : raw)}</pre>
             )}
 
             {view==='pretty' && !raw && (
-              <div className="mw-error">Nothing to show. Paste JSON on the left and click Beautify or Parse.</div>
+              <span className="mw-error">Nothing to show. Paste JSON on the left and click Beautify or Parse.</span>
             )}
 
             {view!=='pretty' && !json && (
-              <div className="mw-error">No parsed JSON yet. Click Parse (left) after pasting your JSON.</div>
+              <span className="mw-error">No parsed JSON yet. Click Parse (left) after pasting your JSON.</span>
             )}
 
             {view === 'yaml' && json && (
@@ -422,14 +428,14 @@ export default function MaterializeJsonWorkbench() {
             )}
 
 
-            {showTree && (
+            {showTree && json && (
               <div className="tree">
-                <TreeNode data={filteredJson} path={["$root"]} collapsed={collapsed} setCollapsed={setCollapsed} highlight={highlight} />
+                <TreeNode data={filteredJson ?? json} path={["$root"]} collapsed={collapsed} setCollapsed={setCollapsed} highlight={highlight} />
               </div>
             )}
 
-            {showForm && (
-              <FormView data={filteredJson} onChange={handleFormChange} />
+            {showForm && json && (
+              <FormView data={filteredJson ?? json} onChange={handleFormChange} />
             )}
           </div>
         </section>
